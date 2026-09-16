@@ -8,11 +8,25 @@ const projectRoot = __dirname;
 const html = fs.readFileSync(path.join(projectRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(projectRoot, "style.css"), "utf8");
 const source = fs.readFileSync(path.join(projectRoot, "script.js"), "utf8");
-const { LEVELS, BASE_VALUES, getResetValues, isSolution } = require("./script.js");
+const {
+  LEVELS,
+  BASE_VALUES,
+  STORAGE_KEY,
+  getResetValues,
+  isSolution,
+  calculateLevelScore,
+  createInitialProgress,
+  normalizeProgress,
+  readSavedProgress,
+  writeSavedProgress
+} = require("./script.js");
+
+let testCount = 0;
 
 function test(name, callback) {
   try {
     callback();
+    testCount += 1;
     console.log(`✓ ${name}`);
   } catch (error) {
     console.error(`✗ ${name}`);
@@ -20,10 +34,11 @@ function test(name, callback) {
   }
 }
 
-test("קיימים בדיוק 6 שלבים", () => {
+test("קיימים בדיוק 6 שלבים מלאים ומגוונים", () => {
   assert.equal(LEVELS.length, 6);
   assert.deepEqual(LEVELS.map((level) => level.code), [
-    "MISSION_01", "MISSION_02", "MISSION_03", "MISSION_04", "MISSION_05", "MISSION_06"
+    "MISSION_01", "MISSION_02", "MISSION_03",
+    "MISSION_04", "MISSION_05", "MISSION_06"
   ]);
 });
 
@@ -86,6 +101,54 @@ test("כל מאפייני החובה מופיעים בפתרונות ובממש�
   });
 });
 
+test("הניקוד יורד לפי מספר הניסיונות אך נשאר חיובי", () => {
+  assert.equal(calculateLevelScore(1), 100);
+  assert.equal(calculateLevelScore(2), 90);
+  assert.equal(calculateLevelScore(7), 40);
+  assert.equal(calculateLevelScore(100), 40);
+  assert.equal(calculateLevelScore(0), 0);
+});
+
+test("נתוני התקדמות שמורים עוברים נרמול בטוח", () => {
+  const normalized = normalizeProgress({
+    currentLevelIndex: 99,
+    unlockedLevelIndex: 2,
+    completedLevels: [0, 1, 1, 99, -1],
+    attempts: [1, 2, -4, "3"],
+    score: 190
+  });
+  assert.equal(normalized.currentLevelIndex, 2);
+  assert.equal(normalized.unlockedLevelIndex, 2);
+  assert.deepEqual(normalized.completedLevels, [0, 1]);
+  assert.deepEqual(normalized.attempts.slice(0, 4), [1, 2, 0, 0]);
+  assert.equal(normalized.score, 190);
+});
+
+test("שמירת התקדמות פועלת ללא ספרייה חיצונית", () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value)
+  };
+  const progress = createInitialProgress();
+  progress.currentLevelIndex = 1;
+  progress.unlockedLevelIndex = 1;
+  progress.completedLevels = [0];
+  progress.attempts[0] = 2;
+  progress.score = 90;
+  assert.equal(writeSavedProgress(storage, progress), true);
+  assert.ok(values.has(STORAGE_KEY));
+  assert.deepEqual(readSavedProgress(storage), progress);
+});
+
+test("ממשק המשחק כולל ניקוד, ניסיונות וניווט בין שלבים", () => {
+  ["score-value", "attempt-value", "completed-value", "level-buttons", "final-score"].forEach((id) => {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `חסר הרכיב ${id}`);
+  });
+  assert.match(source, /localStorage/);
+  assert.match(source, /renderLevelNavigation/);
+});
+
 test("הפרויקט אינו משתמש ב-CSS Grid או בספריות חיצוניות", () => {
   assert.doesNotMatch(css, /display\s*:\s*(inline-)?grid|grid-template/i);
   assert.doesNotMatch(html, /<script[^>]+src=["']https?:\/\//i);
@@ -96,4 +159,4 @@ test("קובץ ה-JavaScript תקין תחבירית", () => {
   assert.doesNotThrow(() => new Function(source));
 });
 
-console.log("\nכל 10 הבדיקות עברו בהצלחה.");
+console.log(`\nכל ${testCount} הבדיקות עברו בהצלחה.`);

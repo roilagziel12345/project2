@@ -27,6 +27,8 @@ const BASE_VALUES = Object.freeze({
   alignContent: "stretch"
 });
 
+const STORAGE_KEY = "container-orchestrator-progress-v1";
+
 const LEVELS = Object.freeze([
   {
     code: "MISSION_01",
@@ -91,6 +93,72 @@ const LEVELS = Object.freeze([
   }
 ]);
 
+function calculateLevelScore(attemptCount) {
+  if (!Number.isInteger(attemptCount) || attemptCount < 1) return 0;
+  return Math.max(40, 110 - attemptCount * 10);
+}
+
+function createInitialProgress(levelCount = LEVELS.length) {
+  return {
+    currentLevelIndex: 0,
+    unlockedLevelIndex: 0,
+    completedLevels: [],
+    attempts: Array(levelCount).fill(0),
+    score: 0
+  };
+}
+
+function normalizeProgress(value, levelCount = LEVELS.length) {
+  const initial = createInitialProgress(levelCount);
+  if (!value || typeof value !== "object") return initial;
+
+  const completedLevels = [...new Set(
+    (Array.isArray(value.completedLevels) ? value.completedLevels : [])
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < levelCount)
+  )].sort((first, second) => first - second);
+  const inferredUnlocked = completedLevels.length
+    ? Math.min(levelCount - 1, Math.max(...completedLevels) + 1)
+    : 0;
+  const requestedUnlocked = Number.isInteger(value.unlockedLevelIndex)
+    ? value.unlockedLevelIndex
+    : 0;
+  const unlockedLevelIndex = Math.min(
+    levelCount - 1,
+    Math.max(0, requestedUnlocked, inferredUnlocked)
+  );
+  const requestedCurrent = Number.isInteger(value.currentLevelIndex)
+    ? value.currentLevelIndex
+    : 0;
+  const currentLevelIndex = Math.min(unlockedLevelIndex, Math.max(0, requestedCurrent));
+  const attempts = Array.from({ length: levelCount }, (_, index) => {
+    const attempt = Array.isArray(value.attempts) ? value.attempts[index] : 0;
+    return Number.isInteger(attempt) && attempt >= 0 ? attempt : 0;
+  });
+  const score = Number.isInteger(value.score) && value.score >= 0 ? value.score : 0;
+
+  return { currentLevelIndex, unlockedLevelIndex, completedLevels, attempts, score };
+}
+
+function readSavedProgress(storage, levelCount = LEVELS.length) {
+  if (!storage) return createInitialProgress(levelCount);
+  try {
+    const saved = storage.getItem(STORAGE_KEY);
+    return normalizeProgress(saved ? JSON.parse(saved) : null, levelCount);
+  } catch {
+    return createInitialProgress(levelCount);
+  }
+}
+
+function writeSavedProgress(storage, progress) {
+  if (!storage) return false;
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function getResetValues(level) {
   return level.controls.reduce((values, property) => {
     values[property] = BASE_VALUES[property];
@@ -123,28 +191,49 @@ function createGame(rootDocument) {
     form: rootDocument.getElementById("controls-form"),
     resetButton: rootDocument.getElementById("reset-button"),
     feedback: rootDocument.getElementById("feedback"),
+    scoreValue: rootDocument.getElementById("score-value"),
+    attemptValue: rootDocument.getElementById("attempt-value"),
+    completedValue: rootDocument.getElementById("completed-value"),
+    levelButtons: rootDocument.getElementById("level-buttons"),
     flexContainer: rootDocument.getElementById("flex-container"),
     targetLayer: rootDocument.getElementById("target-layer"),
     podCount: rootDocument.getElementById("pod-count"),
     modal: rootDocument.getElementById("completion-modal"),
+    finalScore: rootDocument.getElementById("final-score"),
     restartButton: rootDocument.getElementById("restart-button")
   };
 
-  let currentLevelIndex = 0;
+  let storage = null;
+  try {
+    storage = rootDocument.defaultView?.localStorage || null;
+  } catch {
+    storage = null;
+  }
+
+  const savedProgress = readSavedProgress(storage);
+  let currentLevelIndex = savedProgress.currentLevelIndex;
+  let unlockedLevelIndex = savedProgress.unlockedLevelIndex;
+  let completedLevels = new Set(savedProgress.completedLevels);
+  let attempts = savedProgress.attempts;
+  let score = savedProgress.score;
   let currentValues = {};
 
   function formatStage(number) {
     return String(number).padStart(2, "0");
   }
 
-  function renderNodes(count, itemWidth = 64) {
+  function renderNodes(level) {
     elements.flexContainer.replaceChildren();
     elements.targetLayer.replaceChildren();
 
-    for (let index = 0; index < count; index += 1) {
+    const itemWidth = level.itemWidth || 64;
+
+    for (let index = 0; index < level.itemCount; index += 1) {
+      const itemHeight = level.itemHeights?.[index] || 64;
       const target = rootDocument.createElement("span");
       target.className = "target";
       target.style.width = `${itemWidth}px`;
+      target.style.height = `${itemHeight}px`;
       target.style.flexBasis = `${itemWidth}px`;
       elements.targetLayer.appendChild(target);
 
@@ -152,6 +241,7 @@ function createGame(rootDocument) {
       node.className = "container-node";
       node.textContent = `CTR-${formatStage(index + 1)}`;
       node.style.width = `${itemWidth}px`;
+      node.style.height = `${itemHeight}px`;
       node.style.flexBasis = `${itemWidth}px`;
       elements.flexContainer.appendChild(node);
     }
@@ -204,6 +294,64 @@ function createGame(rootDocument) {
     });
   }
 
+  function getProgressSnapshot() {
+    return {
+      currentLevelIndex,
+      unlockedLevelIndex,
+      completedLevels: [...completedLevels],
+      attempts: [...attempts],
+      score
+    };
+  }
+
+  function saveProgress() {
+    writeSavedProgress(storage, getProgressSnapshot());
+  }
+
+  function updatePerformance() {
+    const completion = Math.round((completedLevels.size / LEVELS.length) * 100);
+    elements.scoreValue.textContent = String(score).padStart(3, "0");
+    elements.attemptValue.textContent = String(attempts[currentLevelIndex]);
+    elements.completedValue.textContent = `${completedLevels.size}/${LEVELS.length}`;
+    elements.progressPercent.textContent = `${completion}% הושלמו`;
+    elements.progressFill.style.width = `${completion}%`;
+  }
+
+  function openLevel(levelIndex) {
+    const isAvailable = levelIndex <= unlockedLevelIndex || completedLevels.has(levelIndex);
+    if (!isAvailable || levelIndex === currentLevelIndex) return;
+
+    currentLevelIndex = levelIndex;
+    saveProgress();
+    renderLevel();
+    rootDocument.querySelector(".mission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function renderLevelNavigation() {
+    elements.levelButtons.replaceChildren();
+
+    LEVELS.forEach((level, index) => {
+      const button = rootDocument.createElement("button");
+      const isComplete = completedLevels.has(index);
+      const isCurrent = index === currentLevelIndex;
+      const isAvailable = index <= unlockedLevelIndex || isComplete;
+
+      button.type = "button";
+      button.className = "level-button";
+      button.textContent = isComplete && !isCurrent ? `✓${index + 1}` : String(index + 1);
+      button.disabled = !isAvailable;
+      button.classList.toggle("is-complete", isComplete);
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-current", isCurrent ? "step" : "false");
+      button.setAttribute(
+        "aria-label",
+        `שלב ${index + 1}: ${isCurrent ? "שלב נוכחי" : isComplete ? "הושלם" : isAvailable ? "פתוח" : "נעול"}`
+      );
+      button.addEventListener("click", () => openLevel(index));
+      elements.levelButtons.appendChild(button);
+    });
+  }
+
   function clearResultState() {
     elements.feedback.replaceChildren();
     elements.flexContainer.classList.remove("is-correct", "is-error");
@@ -215,16 +363,19 @@ function createGame(rootDocument) {
     renderControls(level);
     applyFlexStyles(elements.flexContainer, currentValues);
     clearResultState();
+    updatePerformance();
   }
 
-  function showFeedback(success) {
+  function showFeedback(success, pointsEarned = 0) {
     const wrapper = rootDocument.createElement("div");
     wrapper.className = `feedback-message ${success ? "feedback-success" : "feedback-error"}`;
 
     const message = rootDocument.createElement("p");
     message.textContent = success
-      ? "✓ הפריסה תקינה. כל הקונטיינרים הגיעו ליעד."
-      : "הפריסה עדיין לא תואמת ליעדים. בדוק את הצירים והמרווחים.";
+      ? pointsEarned > 0
+        ? `✓ הפריסה תקינה. נוספו ${pointsEarned} נקודות.`
+        : "✓ הפריסה תקינה. שלב זה כבר הושלם."
+      : `הפריסה עדיין לא תואמת ליעדים. זה היה ניסיון ${attempts[currentLevelIndex]}; אפשר להמשיך לנסות.`;
     wrapper.appendChild(message);
 
     if (success) {
@@ -241,37 +392,56 @@ function createGame(rootDocument) {
 
   function checkAnswer() {
     const level = LEVELS[currentLevelIndex];
+    attempts[currentLevelIndex] += 1;
     const correct = isSolution(level, currentValues);
     elements.flexContainer.classList.remove("is-correct", "is-error");
 
     if (correct) {
+      let pointsEarned = 0;
+      if (!completedLevels.has(currentLevelIndex)) {
+        pointsEarned = calculateLevelScore(attempts[currentLevelIndex]);
+        score += pointsEarned;
+        completedLevels.add(currentLevelIndex);
+        unlockedLevelIndex = Math.min(
+          LEVELS.length - 1,
+          Math.max(unlockedLevelIndex, currentLevelIndex + 1)
+        );
+      }
       elements.flexContainer.classList.add("is-correct");
-      showFeedback(true);
+      saveProgress();
+      updatePerformance();
+      renderLevelNavigation();
+      showFeedback(true, pointsEarned);
       return true;
     }
 
     void elements.flexContainer.offsetWidth;
     elements.flexContainer.classList.add("is-error");
+    saveProgress();
+    updatePerformance();
     showFeedback(false);
     return false;
   }
 
   function nextLevel() {
     if (currentLevelIndex === LEVELS.length - 1) {
+      elements.finalScore.textContent = String(score).padStart(3, "0");
       elements.modal.hidden = false;
       elements.restartButton.focus();
       return;
     }
 
     currentLevelIndex += 1;
+    unlockedLevelIndex = Math.max(unlockedLevelIndex, currentLevelIndex);
+    saveProgress();
     renderLevel();
-    rootDocument.querySelector(".mission-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+    rootDocument.querySelector(".mission-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function renderLevel() {
     const level = LEVELS[currentLevelIndex];
     const stage = currentLevelIndex + 1;
-    const completion = Math.round((stage / LEVELS.length) * 100);
+    const completion = Math.round((completedLevels.size / LEVELS.length) * 100);
 
     elements.headerStage.textContent = `MISSION ${formatStage(stage)} / ${formatStage(LEVELS.length)}`;
     elements.stageStatus.textContent = `שלב ${stage} מתוך ${LEVELS.length}`;
@@ -284,9 +454,10 @@ function createGame(rootDocument) {
     elements.tip.textContent = level.tip;
     elements.podCount.textContent = `PODS ${formatStage(level.itemCount)}`;
 
-    renderNodes(level.itemCount, level.itemWidth);
+    renderNodes(level);
     applyFlexStyles(elements.targetLayer, { ...BASE_VALUES, ...level.solution });
     resetLevel();
+    renderLevelNavigation();
   }
 
   elements.form.addEventListener("submit", (event) => {
@@ -297,6 +468,15 @@ function createGame(rootDocument) {
   elements.resetButton.addEventListener("click", resetLevel);
   elements.restartButton.addEventListener("click", () => {
     currentLevelIndex = 0;
+    unlockedLevelIndex = 0;
+    completedLevels = new Set();
+    attempts = Array(LEVELS.length).fill(0);
+    score = 0;
+    try {
+      storage?.removeItem(STORAGE_KEY);
+    } catch {
+      // The game still restarts when storage is unavailable.
+    }
     elements.modal.hidden = true;
     renderLevel();
   });
@@ -318,7 +498,8 @@ function createGame(rootDocument) {
     checkAnswer,
     resetLevel,
     getCurrentLevelIndex: () => currentLevelIndex,
-    getCurrentValues: () => ({ ...currentValues })
+    getCurrentValues: () => ({ ...currentValues }),
+    getProgress: getProgressSnapshot
   };
 }
 
@@ -326,8 +507,14 @@ const GAME_TEST_API = Object.freeze({
   LEVELS,
   BASE_VALUES,
   PROPERTY_OPTIONS,
+  STORAGE_KEY,
   getResetValues,
   isSolution,
+  calculateLevelScore,
+  createInitialProgress,
+  normalizeProgress,
+  readSavedProgress,
+  writeSavedProgress,
   createGame
 });
 

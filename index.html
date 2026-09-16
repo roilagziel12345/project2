@@ -39,10 +39,16 @@
 
         <div class="progress-meta">
           <p id="stage-status">שלב 1 מתוך 6</p>
-          <p id="progress-percent">17% הושלמו</p>
+          <p id="progress-percent">0% הושלמו</p>
         </div>
         <div class="progress-track" aria-hidden="true">
           <span id="progress-fill"></span>
+        </div>
+
+        <div class="performance-row" aria-label="נתוני המשחק">
+          <span>ניקוד <strong id="score-value">000</strong></span>
+          <span>ניסיונות בשלב <strong id="attempt-value">0</strong></span>
+          <span>הושלמו <strong id="completed-value">0/6</strong></span>
         </div>
 
         <div class="mission-copy">
@@ -79,6 +85,14 @@
         </form>
 
         <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+
+        <nav class="level-navigation" aria-label="ניווט בין שלבי המשחק">
+          <div class="level-navigation-heading">
+            <span>ניווט משימות</span>
+            <small>ניתן לחזור לכל שלב שהושלם</small>
+          </div>
+          <div id="level-buttons" class="level-buttons"></div>
+        </nav>
       </section>
 
       <section class="simulation-panel" aria-labelledby="simulation-title">
@@ -123,6 +137,7 @@
         <p class="eyebrow">DEPLOYMENT COMPLETE</p>
         <h2 id="completion-title">הקלאסטר מתוזמר!</h2>
         <p>השלמת את כל ששת התרחישים והפעלת בהצלחה את פרוטוקול Flexbox.</p>
+        <p class="final-score">הניקוד הסופי שלך: <strong id="final-score">000</strong></p>
         <button id="restart-button" class="button button-primary" type="button">התחל מסלול מחדש</button>
       </section>
     </div>
