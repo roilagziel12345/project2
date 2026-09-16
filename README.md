@@ -1,17 +1,14 @@
-# Container Orchestrator
+<h1 dir="rtl" align="right">Container Orchestrator</h1>
 
-משחק SPA אינטראקטיבי ללימוד Flexbox דרך שישה תרחישי פריסה בעולם ה־DevOps. נבנה ב־HTML, CSS ו־Vanilla JavaScript בלבד, ללא ספריות חיצוניות וללא CSS Grid.
+<p dir="rtl" align="right">משחק SPA אינטראקטיבי ללימוד Flexbox דרך שישה תרחישי פריסה בעולם ה־DevOps. נבנה ב־HTML, CSS ו־Vanilla JavaScript בלבד, ללא ספריות חיצוניות וללא CSS Grid.</p>
 
-## הפעלה
+<h2 dir="rtl" align="right">פרטי הגשה</h2>
 
-פתחו את `index.html` בדפדפן מודרני. אין צורך בתהליך build או בשרת פיתוח.
+<ul dir="rtl" align="right">
+  <li>רועי לגזיאל</li>
+  <li>אפיק עוז</li>
+</ul>
 
-## בדיקות
+<h2 dir="rtl" align="right">הפעלה</h2>
 
-נדרשת סביבת Node.js:
-
-```bash
-node test.js
-```
-
-הבדיקות מוודאות את מספר השלבים, ממדי הלוח הקבועים, תקינות כל הפתרונות, פעולת האיפוס, קיום שלב `flex-wrap`, מורכבות השלבים והיעדר תלויות או CSS Grid.
+<p dir="rtl" align="right">פתחו את <code>index.html</code> בדפדפן מודרני. אין צורך בתהליך build או בשרת פיתוח.</p>
