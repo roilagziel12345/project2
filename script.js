@@ -90,6 +90,29 @@ const LEVELS = Object.freeze([
     itemCount: 5,
     controls: ["display", "flexDirection", "justifyContent", "alignItems", "flexWrap"],
     solution: { display: "flex", flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", flexWrap: "nowrap" }
+  },
+  {
+    code: "MISSION_07",
+    title: "Reverse Wrap",
+    difficulty: "מומחה",
+    instruction: "פרוס תשעה pods בשורות בסדר הפוך, אפשר גלישה הפוכה, פזר כל שורה במרווח סביב הפריטים והפרד את השורות בין קצות השרת.",
+    tip: "wrap-reverse הופך את כיוון הציר הנגדי, בעוד row-reverse הופך את סדר הפריטים בכל שורה.",
+    itemCount: 9,
+    itemWidth: 96,
+    controls: ["display", "flexDirection", "justifyContent", "flexWrap", "alignContent"],
+    solution: { display: "flex", flexDirection: "row-reverse", justifyContent: "space-around", flexWrap: "wrap-reverse", alignContent: "space-between" }
+  },
+  {
+    code: "MISSION_08",
+    title: "Adaptive Fleet",
+    difficulty: "סופי+",
+    instruction: "ארגן שמונה קונטיינרים בגבהים שונים בשתי שורות ממורכזות: הפוך את הסדר, צור מרווח שווה סביבם ומרכז כל פריט בתוך השורה שלו.",
+    tip: "בפריסה מרובת שורות align-content ממקם את קבוצת השורות, ואילו align-items מיישר את הפריטים בתוך כל שורה.",
+    itemCount: 8,
+    itemWidth: 108,
+    itemHeights: [48, 76, 56, 88, 64, 52, 82, 60],
+    controls: ["display", "flexDirection", "justifyContent", "alignItems", "flexWrap", "alignContent"],
+    solution: { display: "flex", flexDirection: "row-reverse", justifyContent: "space-around", alignItems: "center", flexWrap: "wrap", alignContent: "center" }
   }
 ]);
 

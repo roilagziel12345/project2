@@ -1,6 +1,6 @@
 <h1 dir="rtl" align="right">Container Orchestrator</h1>
 
-<p dir="rtl" align="right">משחק SPA אינטראקטיבי ללימוד Flexbox דרך שישה תרחישי פריסה בעולם ה־DevOps. נבנה ב־HTML, CSS ו־Vanilla JavaScript בלבד, ללא ספריות חיצוניות וללא CSS Grid.</p>
+<p dir="rtl" align="right">משחק SPA אינטראקטיבי ללימוד Flexbox דרך שמונה תרחישי פריסה בעולם ה־DevOps. נבנה ב־HTML, CSS ו־Vanilla JavaScript בלבד, ללא ספריות חיצוניות וללא CSS Grid.</p>
 
 <h2 dir="rtl" align="right">פרטי הגשה</h2>
 
@@ -12,7 +12,7 @@
 <h2 dir="rtl" align="right">יכולות המשחק</h2>
 
 <ul dir="rtl" align="right">
-  <li>שישה שלבים המשלבים מאפייני Flexbox שונים, כולל גלישה לשורות.</li>
+  <li>שמונה שלבים המשלבים מאפייני Flexbox שונים, כולל גלישה וגלישה הפוכה.</li>
   <li>מערכת ניקוד וספירת ניסיונות לכל שלב.</li>
   <li>שמירת התקדמות אוטומטית וחזרה לשלבים שכבר נפתחו.</li>
   <li>משוב חזותי, אנימציות ותצוגה רספונסיבית.</li>

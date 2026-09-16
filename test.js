@@ -34,11 +34,11 @@ function test(name, callback) {
   }
 }
 
-test("קיימים בדיוק 6 שלבים מלאים ומגוונים", () => {
-  assert.equal(LEVELS.length, 6);
+test("קיימים 8 שלבים מלאים ומגוונים", () => {
+  assert.equal(LEVELS.length, 8);
   assert.deepEqual(LEVELS.map((level) => level.code), [
-    "MISSION_01", "MISSION_02", "MISSION_03",
-    "MISSION_04", "MISSION_05", "MISSION_06"
+    "MISSION_01", "MISSION_02", "MISSION_03", "MISSION_04",
+    "MISSION_05", "MISSION_06", "MISSION_07", "MISSION_08"
   ]);
 });
 
@@ -99,6 +99,19 @@ test("כל מאפייני החובה מופיעים בפתרונות ובממש�
     assert.ok(LEVELS.some((level) => Object.hasOwn(level.solution, property)), `חסר ${property}`);
     assert.ok(LEVELS.some((level) => level.controls.includes(property)), `אין בקרה עבור ${property}`);
   });
+});
+
+test("השלבים הנוספים משלבים wrap-reverse ויישור פריטים בגבהים שונים", () => {
+  const reverseWrapLevel = LEVELS[6];
+  const adaptiveLevel = LEVELS[7];
+  assert.equal(reverseWrapLevel.solution.flexWrap, "wrap-reverse");
+  assert.equal(reverseWrapLevel.solution.flexDirection, "row-reverse");
+  assert.ok(Object.keys(reverseWrapLevel.solution).length >= 5);
+  assert.equal(adaptiveLevel.solution.flexWrap, "wrap");
+  assert.equal(adaptiveLevel.solution.alignItems, "center");
+  assert.equal(adaptiveLevel.solution.alignContent, "center");
+  assert.equal(adaptiveLevel.itemHeights.length, adaptiveLevel.itemCount);
+  assert.ok(new Set(adaptiveLevel.itemHeights).size > 3);
 });
 
 test("הניקוד יורד לפי מספר הניסיונות אך נשאר חיובי", () => {
